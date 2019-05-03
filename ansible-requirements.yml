@@ -1,0 +1,6 @@
+---
+# The Ansible Roles needed to install the CI platform
+# Secure the platform to CIS standards
+- src: https://github.com/MindPointGroup/RHEL7-CIS.git
+# Install Jenkins
+- src: geerlingguy.jenkins

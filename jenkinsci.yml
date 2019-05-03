@@ -1,0 +1,62 @@
+---
+# eeci.yml
+#
+# Created by Matthew Macdonald-Wallace
+#
+# This playbook installs and configures Jenkins
+#
+
+# Secure the base system (usually done during image build)
+- hosts: all
+  become: true
+  become_user: root
+  gather_facts: yes
+  roles:
+      - { role: RHEL7-CIS, tags: ["base", "security"] }
+  vars:
+      rhel7cis_rule_3_4_2: false
+      rhel7cis_rule_3_4_3: false
+      rhel7cis_sshd:
+          clientalivecountmax: 3
+          clientaliveinterval: 300
+          ciphers: "aes256-ctr,aes192-ctr,aes128-ctr"
+          macs: "hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com,hmac-sha2-512,hmac-sha2-256,umac-128@openssh.com"
+          logingracetime: 30
+
+# Create the temporary Jenkins directory
+# because the geerlingguy role doesn't
+# do this by default
+- hosts: all
+  become: true
+  become_user: root
+  tasks:
+      - name: Open the firewall ports immediately
+        firewalld:
+            port: 8080/tcp
+            state: enabled
+      # The Ansible firewalld handler won't set a port to permanent
+      # unless we tell it to, even if we've told it to open the port
+      # previously
+      - name: Open the firewall ports permanently
+        firewalld:
+            port: 8080/tcp
+            state: enabled
+            permanent: yes
+
+
+# Install Jenkins
+- hosts: all
+  become: true
+  become_user: root
+  gather_facts: yes
+  roles:
+      - { role: geerlingguy.jenkins, tags: ["ci", "jenkins"] }
+  vars:
+      jenkins_plugins:
+          - github
+          - blueocean
+          - slack
+          - greenballs
+      # Dont' run the installation wizard, set the tmp dir to $JENKINS_HOME
+      # in order to address the issues in https://github.com/geerlingguy/ansible-role-jenkins/issues/264
+      jenkins_java_options: "-Djenkins.install.runSetupWizard=false -Djava.io.tmpdir=$JENKINS_HOME"
